@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import ChatHeader from "./ChatHeader";
 import MessageBubble from "../chat/MessageBubble";
 import useChatStore from "../../store/chatStore";
+import socket from "../../services/socket";
 
 function ChatWindow() {
   const [input, setInput] = useState("");
@@ -28,7 +29,20 @@ function ChatWindow() {
         time: "10:01",
       },
     ]);
-  }, []);
+  }, [setMessages]);
+
+  useEffect(() => {
+    socket.on(
+      "receive_message",
+      (message) => {
+        addMessage(message);
+      }
+    );
+
+    return () => {
+      socket.off("receive_message");
+    };
+  }, [addMessage]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -39,17 +53,22 @@ function ChatWindow() {
   const sendMessage = () => {
     if (!input.trim()) return;
 
-    const currentTime = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    addMessage({
+    const message = {
       text: input,
       own: true,
-      time: currentTime,
+      time: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       seen: false,
-    });
+    };
+
+    addMessage(message);
+
+    socket.emit(
+      "send_message",
+      message
+    );
 
     setInput("");
   };
